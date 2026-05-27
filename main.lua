@@ -609,7 +609,7 @@ function setupGame()
 		fishingHookSprite:add()
 		underwaterBackgroundSprite:add()
 
-		local randomFishcount = math.random(10, 20)
+		local randomFishcount = math.random(3, 9)
 		spawnFish(randomFishcount)
 		print("Spawned: " .. randomFishcount .. " fish")
 	end
@@ -711,7 +711,7 @@ function playdate.update()
 				
 				-- scroll underwaterbackground with crank
 				local bgY1 = underwaterBackgroundSprite.y
-				underwaterBackgroundSprite:moveBy(0, -2 + reeling)
+				underwaterBackgroundSprite:moveBy(0, -2 - reeling)
 				local bgY2 = underwaterBackgroundSprite.y - bgY1
 
 					--limits scrolling underwaterbackground too far and moves fish with underwaterbackground
