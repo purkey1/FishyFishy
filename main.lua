@@ -5,7 +5,7 @@
 
 import("CoreLibs/graphics")
 import("CoreLibs/sprites")
-import "CoreLibs/timer"
+import("CoreLibs/timer")
 
 local animation = playdate.graphics.animation
 local gfx = playdate.graphics
@@ -15,15 +15,22 @@ local sound = playdate.sound
 --settings
 local pauseGame = false
 
+-- prompt stuff
+local releaseFishPromptSprite = nil
+local RFPromptCounter = 0
+local castLinePromptSprite = nil
+local CLPromptCounter = 0
+
 -- Timers
 local buttonCheckTimer = nil
 local timeLimit = nil
 local swimAway = nil
+local promptGrow = nil
 
--- Variables for our sprites
+-- Variables for sprites
 local fishingHookSprite = nil
 local underwaterBackgroundSprite = nil
-local aboveWaterBackroundSprite = nil
+local aboveWaterBackgroundSprite = nil
 local sellAnimationSprite = nil
 local balanceTextSprite = nil
 local buttonSprite = nil
@@ -34,7 +41,8 @@ local underwaterMusic = nil
 local bubblesSound = nil
 local windSound = nil
 local waterSplashSound = nil
-local popSound = nil
+local correctSound = nil
+local wrongSound = nil
 
 --Fish
 local fishSprite = nil
@@ -82,65 +90,148 @@ Buttons = {
 }
 
 -- fish raritys
-local NoFish = { data = { sellGifPath = "assets/Animations/nofish", priceMin = "0", priceMax = "0" }}
+local NoFish = { data = { sellGifPath = "assets/Animations/nofish", priceMin = "0", priceMax = "0" } }
 Fishys = {
 	Common = {
 		probability = 0.5,
 		fish = {
-			Cod = { probability = 100 / 100, imgPath = "assets/Fish/Common-Cod", sellGifPath = "assets/Animations/cod", catchDificulty = "2", priceMin = "1", priceMax = "6" },
-		}
+			Cod = {
+				probability = 100 / 100,
+				imgPath = "assets/Fish/Common-Cod",
+				sellGifPath = "assets/Animations/cod",
+				catchDificulty = "2",
+				priceMin = "1",
+				priceMax = "6",
+			},
+		},
 	},
 
 	Rare = {
 		probability = 0.2,
 		fish = {
-			Clownfish = { probability = 50 / 100, imgPath = "assets/Fish/Rare-Clownfish", sellGifPath = "assets/Animations/clownfish", catchDificulty = "4", priceMin = "4", priceMax = "12" },
-			Bass = { probability = 50 / 100, imgPath = "assets/Fish/Rare-Bass", sellGifPath = "assets/Animations/bass", catchDificulty = "4", priceMin = "4", priceMax = "12" },
-		}
+			Clownfish = {
+				probability = 50 / 100,
+				imgPath = "assets/Fish/Rare-Clownfish",
+				sellGifPath = "assets/Animations/clownfish",
+				catchDificulty = "4",
+				priceMin = "4",
+				priceMax = "12",
+			},
+			Bass = {
+				probability = 50 / 100,
+				imgPath = "assets/Fish/Rare-Bass",
+				sellGifPath = "assets/Animations/bass",
+				catchDificulty = "4",
+				priceMin = "4",
+				priceMax = "12",
+			},
+		},
 	},
 
 	Epic = {
 		probability = 0.15,
 		fish = {
-			Pufferfish = { probability = 34 / 100, imgPath = "assets/Fish/Epic-Pufferfish", sellGifPath = "assets/Animations/pufferfish", catchDificulty = "7", priceMin = "10", priceMax = "18" },
-			MoorishIdol = { probability = 33 / 100, imgPath = "assets/Fish/Epic-MoorishIdol", sellGifPath = "assets/Animations/moorishIdol", catchDificulty = "7", priceMin = "10", priceMax = "18" },
-			Crab = { probability = 33 / 100, imgPath = "assets/Fish/Epic-Crab", sellGifPath = "assets/Animations/crab", catchDificulty = "7", priceMin = "10", priceMax = "18" },
-		}
+			Pufferfish = {
+				probability = 34 / 100,
+				imgPath = "assets/Fish/Epic-Pufferfish",
+				sellGifPath = "assets/Animations/pufferfish",
+				catchDificulty = "7",
+				priceMin = "10",
+				priceMax = "18",
+			},
+			MoorishIdol = {
+				probability = 33 / 100,
+				imgPath = "assets/Fish/Epic-MoorishIdol",
+				sellGifPath = "assets/Animations/moorishIdol",
+				catchDificulty = "7",
+				priceMin = "10",
+				priceMax = "18",
+			},
+			Crab = {
+				probability = 33 / 100,
+				imgPath = "assets/Fish/Epic-Crab",
+				sellGifPath = "assets/Animations/crab",
+				catchDificulty = "7",
+				priceMin = "10",
+				priceMax = "18",
+			},
+		},
 	},
 
 	Legendary = {
 		probability = 0.08,
 		fish = {
-			Octopus = { probability = 50 / 100, imgPath = "assets/Fish/Legendary-Octopus", sellGifPath = "assets/Animations/octopus", catchDificulty = "9", priceMin = "16", priceMax = "25" },
-			Seahorse = { probability = 50 / 100, imgPath = "assets/Fish/Legendary-Seahorse", sellGifPath = "assets/Animations/seahorse", catchDificulty = "9", priceMin = "16", priceMax = "25" },
-		}
+			Octopus = {
+				probability = 50 / 100,
+				imgPath = "assets/Fish/Legendary-Octopus",
+				sellGifPath = "assets/Animations/octopus",
+				catchDificulty = "9",
+				priceMin = "16",
+				priceMax = "25",
+			},
+			Seahorse = {
+				probability = 50 / 100,
+				imgPath = "assets/Fish/Legendary-Seahorse",
+				sellGifPath = "assets/Animations/seahorse",
+				catchDificulty = "9",
+				priceMin = "16",
+				priceMax = "25",
+			},
+		},
 	},
 
 	Mythical = {
 		probability = 0.04,
 		fish = {
-			Angler = { probability = 100 / 100, imgPath = "assets/Fish/Mythical-Angler", sellGifPath = "assets/Animations/angler", catchDificulty = "11", priceMin = "23", priceMax = "31" },
-		}
+			Angler = {
+				probability = 100 / 100,
+				imgPath = "assets/Fish/Mythical-Angler",
+				sellGifPath = "assets/Animations/angler",
+				catchDificulty = "11",
+				priceMin = "23",
+				priceMax = "31",
+			},
+		},
 	},
 
-	Insane =  {
+	Insane = {
 		probability = 0.02,
 		fish = {
-			Jellyfish = { probability = 100 / 100, imgPath = "assets/Fish/Insane-Jellyfish", sellGifPath = "assets/Animations/jellyfish", catchDificulty = "14", priceMin = "29", priceMax = "37" },
-		}
+			Jellyfish = {
+				probability = 100 / 100,
+				imgPath = "assets/Fish/Insane-Jellyfish",
+				sellGifPath = "assets/Animations/jellyfish",
+				catchDificulty = "14",
+				priceMin = "29",
+				priceMax = "37",
+			},
+		},
 	},
 
 	Unknown = {
 		probability = 0.01,
 		fish = {
-			Shark = { probability = 99 / 100, imgPath = "assets/Fish/Unknown-Shark", sellGifPath = "assets/Animations/shark", catchDificulty = "17", priceMin = "35", priceMax = "43" },
-			SpongeBOB = { probability = 1 / 100, imgPath = "assets/Fish/Unknown-Spongebob", sellGifPath = "assets/Animations/spongebob", priceMin = "100000", catchDificulty = "30", priceMax = "1000000" },
-		}
-	}
+			Shark = {
+				probability = 99 / 100,
+				imgPath = "assets/Fish/Unknown-Shark",
+				sellGifPath = "assets/Animations/shark",
+				catchDificulty = "17",
+				priceMin = "35",
+				priceMax = "43",
+			},
+			SpongeBOB = {
+				probability = 1 / 100,
+				imgPath = "assets/Fish/Unknown-Spongebob",
+				sellGifPath = "assets/Animations/spongebob",
+				priceMin = "100000",
+				catchDificulty = "30",
+				priceMax = "1000000",
+			},
+		},
+	},
 }
 
 local spawnedFish = {}
-
 
 function getRandomFish()
 	-- Random probability for rarity selection
@@ -155,7 +246,6 @@ function getRandomFish()
 	for rarity, rarityData in pairs(Fishys) do
 		rarityTotal += rarityData.probability
 		if rarityChance <= rarityTotal then
-
 			--Selects the fish from the selected table inside of the Fishys table then returns it to the spawnFish function
 			for fish, data in pairs(rarityData.fish) do
 				total += data.probability
@@ -163,9 +253,8 @@ function getRandomFish()
 					return data, fish
 				end
 			end
-
 		end
-	end	
+	end
 end
 
 function spawnFish(count)
@@ -236,7 +325,7 @@ end
 
 function catchFishMiniGame(fish, difficulty)
 	pauseGame = true
-	
+
 	ButtonOptions = {
 		"Up",
 		"Down",
@@ -244,113 +333,120 @@ function catchFishMiniGame(fish, difficulty)
 		"Right",
 	}
 
-		--Gets random button from buttons list
-		local correctButton = ButtonOptions[math.random(1, 4)]
-		correctButtonData = Buttons[correctButton]
-		--makes the image and sprite
-		local buttonImage = gfx.image.new("assets/Misc/DpadButton")
-		buttonSprite = spr.new(buttonImage)
-		buttonSprite:add()
-		buttonSprite:setRotation(correctButtonData.rotation)
+	--Gets random button from buttons list
+	local correctButton = ButtonOptions[math.random(1, 4)]
+	correctButtonData = Buttons[correctButton]
+	--makes the image and sprite
+	local buttonImage = gfx.image.new("assets/Prompts/DpadButton")
+	buttonSprite = spr.new(buttonImage)
+	buttonSprite:add()
+	buttonSprite:setRotation(correctButtonData.rotation)
 
-			--gets an offset that is max 25 pixles and min 5 pixles away
-			local randomXoffset = 0
-			local randomYoffset = 0
+	--gets an offset that is max 25 pixles and min 5 pixles away
+	local randomXoffset = 0
+	local randomYoffset = 0
 
-			local width, height = fish:getSize()
-			local halfWidth = width / 2
-			local halfHeight = height / 2
+	local width, height = fish:getSize()
+	local halfWidth = width / 2
+	local halfHeight = height / 2
 
-			randomXoffset = math.random(40)
-			randomYoffset = math.random(40)
+	randomXoffset = math.random(40)
+	randomYoffset = math.random(40)
 
-			if randomXoffset < halfWidth then
-				randomXoffset = halfWidth + 25
-			end
+	if randomXoffset < halfWidth then
+		randomXoffset = halfWidth + 25
+	end
 
-			if randomYoffset < halfHeight then
-				randomXoffset = halfWidth + 25
-			end
+	if randomYoffset < halfHeight then
+		randomXoffset = halfWidth + 25
+	end
 
-			local xOffset = fish.x + randomXoffset
-			local yOffset = fish.y + randomYoffset
+	local xOffset = fish.x + randomXoffset
+	local yOffset = fish.y + randomYoffset
 
-			local direction = math.random(4)
+	local direction = math.random(4)
 
-			if xOffset > 375 then
-				direction = math.random(3, 4)
-			elseif xOffset < 25 then
-				direction = math.random(2)
-			end
+	if xOffset > 375 then
+		direction = math.random(3, 4)
+	elseif xOffset < 25 then
+		direction = math.random(2)
+	end
 
-			if yOffset > 215 then
-				direction = 1
-			elseif yOffset < 25 then
-				direction = 3
-			end
+	if yOffset > 215 then
+		direction = 1
+	elseif yOffset < 25 then
+		direction = 3
+	end
 
-		--moves the sprite using the offset with random posotive or negative
-		if direction == 1 then
-			buttonSprite:moveTo(fish.x + randomXoffset, fish.y + randomYoffset)
-		elseif direction == 2 then
-			buttonSprite:moveTo(fish.x + randomXoffset, fish.y - randomYoffset)
-		elseif direction == 3 then
-			buttonSprite:moveTo(fish.x - randomXoffset, fish.y - randomYoffset)
-		else
-			buttonSprite:moveTo(fish.x - randomXoffset, fish.y + randomYoffset)
-		end
+	--moves the sprite using the offset with random posotive or negative
+	if direction == 1 then
+		buttonSprite:moveTo(fish.x + randomXoffset, fish.y + randomYoffset)
+	elseif direction == 2 then
+		buttonSprite:moveTo(fish.x + randomXoffset, fish.y - randomYoffset)
+	elseif direction == 3 then
+		buttonSprite:moveTo(fish.x - randomXoffset, fish.y - randomYoffset)
+	else
+		buttonSprite:moveTo(fish.x - randomXoffset, fish.y + randomYoffset)
+	end
 
-		local currentScale = 1
-		-- time limit to catch the fish
-		timeLimit = playdate.timer.new(3000, function()
-				-- runs when timer is out
-				timeLimit:remove()
-				timeLimit = nil
-				buttonCheckTimer:remove()
-				buttonCheckTimer = nil
-				buttonSprite:remove()
-				buttonSprite = nil
-				currentMinigameFish = nil
-				incorrectPresses = 0
-				timesCompleated = 0
-				-- repeats to animate fish swimming away
-				swimAway = playdate.timer.keyRepeatTimerWithDelay(20, 20, function ()
-				if swimAway then
-					if currentScale <= 0 then
-						fish:remove()
-						swimAway:remove()
-						swimAway = nil
-						pauseGame = false
-					end
+	local currentScale = 1
+	-- time limit to catch the fish
+	timeLimit = playdate.timer.new(3000, function()
+		-- runs when timer is out
+		timeLimit:remove()
+		timeLimit = nil
+		buttonCheckTimer:remove()
+		buttonCheckTimer = nil
+		buttonSprite:remove()
+		buttonSprite = nil
+		currentMinigameFish = nil
+		incorrectPresses = 0
+		timesCompleated = 0
+		-- repeats to animate fish swimming away
+		swimAway = playdate.timer.keyRepeatTimerWithDelay(20, 20, function()
+			if swimAway then
+				if currentScale <= 0 then
+					fish:remove()
+					swimAway:remove()
+					swimAway = nil
+					pauseGame = false
 				end
-					fish:setScale(currentScale - 0.07, currentScale - 0.07)
-					currentScale -= 0.07
-					fish:setCollideRect(0, 0, fish:getSize())
-				end)
+			end
+			fish:setScale(currentScale - 0.07, currentScale - 0.07)
+			currentScale -= 0.07
+			fish:setCollideRect(0, 0, fish:getSize())
 		end)
+	end)
 
-		local function waitForButton()
-			
-			local current, pressed, released = playdate.getButtonState()
-			if buttonPressed == false then
-				if pressed ~= 0 and playdate.buttonJustPressed(string.lower(correctButtonData.name)) == false then
-					buttonPressed = true
-					-- wrong button pressed
-					incorrectPresses += 1
-					print("Incorrect button Pressed - Number of incorrect Presses: " .. incorrectPresses .. " - Fish: " .. fish.data.name)
-					print("number of incorrect presses allowed: " .. fish.data.catchDificulty / 3)
-					if incorrectPresses >= fish.data.catchDificulty / 3 then
-						timeLimit:remove()
-						timeLimit = nil
-						buttonCheckTimer:remove()
-						buttonCheckTimer = nil
-						buttonSprite:remove()
-						buttonSprite = nil
-						currentMinigameFish = nil
-						incorrectPresses = 0
-						timesCompleated = 0
-						-- repeats to animate fish swimming away
-						swimAway = playdate.timer.keyRepeatTimerWithDelay(20, 20, function ()
+	local function waitForButton()
+		local current, pressed, released = playdate.getButtonState()
+		if buttonPressed == false then
+			if pressed ~= 0 and playdate.buttonJustPressed(string.lower(correctButtonData.name)) == false then
+				buttonPressed = true
+				-- wrong button pressed
+				incorrectPresses += 1
+				wrongSound = sound.fileplayer.new("assets/Audio/wrong")
+				wrongSound:setVolume(0.75)
+				wrongSound:play()
+				print(
+					"Incorrect button Pressed - Number of incorrect Presses: "
+						.. incorrectPresses
+						.. " - Fish: "
+						.. fish.data.name
+				)
+				print("number of incorrect presses allowed: " .. fish.data.catchDificulty / 3)
+				if incorrectPresses >= fish.data.catchDificulty / 3 then
+					timeLimit:remove()
+					timeLimit = nil
+					buttonCheckTimer:remove()
+					buttonCheckTimer = nil
+					buttonSprite:remove()
+					buttonSprite = nil
+					currentMinigameFish = nil
+					incorrectPresses = 0
+					timesCompleated = 0
+					-- repeats to animate fish swimming away
+					swimAway = playdate.timer.keyRepeatTimerWithDelay(20, 20, function()
 						if swimAway then
 							if currentScale <= 0 then
 								fish:remove()
@@ -359,61 +455,60 @@ function catchFishMiniGame(fish, difficulty)
 								pauseGame = false
 							end
 						end
-							fish:setScale(currentScale - 0.07, currentScale - 0.07)
-							currentScale -= 0.07
-							fish:setCollideRect(0, 0, fish:getSize())
-						end)
-					end
+						fish:setScale(currentScale - 0.07, currentScale - 0.07)
+						currentScale -= 0.07
+						fish:setCollideRect(0, 0, fish:getSize())
+					end)
 				end
-				if playdate.buttonJustPressed(string.lower(correctButtonData.name)) then
-						buttonPressed = true
-						if buttonCheckTimer then
-							buttonCheckTimer:remove()
-						end
-						if timeLimit then
-							timeLimit:remove()
-						end
-						buttonCheckTimer = nil
-						timeLimit = nil
-						timesCompleated += 1
-						buttonSprite:remove()
-						buttonSprite = nil
+			end
+			if playdate.buttonJustPressed(string.lower(correctButtonData.name)) then
+				buttonPressed = true
+				if buttonCheckTimer then
+					buttonCheckTimer:remove()
+				end
+				if timeLimit then
+					timeLimit:remove()
+				end
+				buttonCheckTimer = nil
+				timeLimit = nil
+				timesCompleated += 1
+				buttonSprite:remove()
+				buttonSprite = nil
 
-						popSound = sound.fileplayer.new("assets/Audio/pop")
-						popSound:setVolume(0.5)
-						popSound:play()
+				correctSound = sound.fileplayer.new("assets/Audio/correct")
+				correctSound:setVolume(0.75)
+				correctSound:play()
 
-						local minigameDone = false
-						if timesCompleated >= difficulty then
-							if minigameDone == false then
-								minigameDone = true
-								--finish minigame 
-								
-								currentMinigameFish = nil
-								pauseGame = false
-								timesCompleated = 0
-								fishHooked = fish
-								fishHooked.speedX = 0
+				local minigameDone = false
+				if timesCompleated >= difficulty then
+					if minigameDone == false then
+						minigameDone = true
+						--finish minigame
 
-								if width > height then
-									fishHooked:setRotation(90)
-								end
-								fishHooked:setCollideRect(0, 0, fishHooked:getSize())
-							end
-						else
-							print("Correct button pressed! Number of presses: " .. timesCompleated)
-							catchFishMiniGame(fish, difficulty)
+						currentMinigameFish = nil
+						pauseGame = false
+						timesCompleated = 0
+						fishHooked = fish
+						fishHooked.speedX = 0
+
+						if width > height then
+							fishHooked:setRotation(90)
 						end
-						return
+						fishHooked:setCollideRect(0, 0, fishHooked:getSize())
 					end
 				else
-					buttonPressed = false
+					print("Correct button pressed! Number of presses: " .. timesCompleated)
+					catchFishMiniGame(fish, difficulty)
 				end
+				return
+			end
+		else
+			buttonPressed = false
 		end
-		-- continuously check if the correct button has been pressed
-		buttonCheckTimer = playdate.timer.keyRepeatTimerWithDelay(2, 2, waitForButton)
+	end
+	-- continuously check if the correct button has been pressed
+	buttonCheckTimer = playdate.timer.keyRepeatTimerWithDelay(2, 2, waitForButton)
 end
-
 
 function startFadeAnimation()
 	windSound = sound.fileplayer.new("assets/Audio/wind")
@@ -424,7 +519,7 @@ function startFadeAnimation()
 		abovewaterMusic:setVolume(0.75)
 		abovewaterMusic:play()
 	end
-	
+
 	fadeAnimation()
 end
 
@@ -433,44 +528,44 @@ function fadeAnimation()
 	gfx.setColor(gfx.kColorBlack)
 	gfx.sprite.removeAll()
 	if aboveWater == true then
-			if fadeAnimationSection == 1 then
-				-- when fadeAnimationSection is equal to 1 it goes through this 
-				-- untill the fadeAnimationIndex is less than 0 once it is
-				-- it changes fadeAnimationSection equal to 2, which skips the first part and runs the else statement below
-				local underwaterBackround = gfx.image.new("assets/Backrounds/FishyFishyUnderwater")
-				underwaterBackgroundSprite = spr.new(underwaterBackround)
-				underwaterBackgroundSprite:moveTo(200, 1200)
-				underwaterBackgroundSprite:add()
-				gfx.setDitherPattern(fadeAnimationIndex)
-				underwaterMusic:setVolume(fadeAnimationIndex)
-				gfx.fillRect(0, 0, 400, 240)
-				fadeAnimationIndex -= 0.09
-				if fadeAnimationIndex <= 0 then
-					fadeAnimationSection = 2
-				end
-			else
-				local sellBackround = gfx.image.new("assets/Backrounds/frame1BASE")
-				aboveWaterBackroundSprite = spr.new(sellBackround)
-				aboveWaterBackroundSprite:moveTo(200, 120)
-				aboveWaterBackroundSprite:add()
-				gfx.setDitherPattern(fadeAnimationIndex)
-				if fadeAnimationIndex < 0.75 then
-					abovewaterMusic:setVolume(fadeAnimationIndex)
-				else
-					abovewaterMusic:setVolume(0.75)
-				end
-				gfx.fillRect(0, 0, 400, 240)
-				fadeAnimationIndex += 0.09
+		if fadeAnimationSection == 1 then
+			-- when fadeAnimationSection is equal to 1 it goes through this
+			-- untill the fadeAnimationIndex is less than 0 once it is
+			-- it changes fadeAnimationSection equal to 2, which skips the first part and runs the else statement below
+			local underwaterBackground = gfx.image.new("assets/Backgrounds/FishyFishyUnderwater")
+			underwaterBackgroundSprite = spr.new(underwaterBackground)
+			underwaterBackgroundSprite:moveTo(200, 1200)
+			underwaterBackgroundSprite:add()
+			gfx.setDitherPattern(fadeAnimationIndex)
+			underwaterMusic:setVolume(fadeAnimationIndex)
+			gfx.fillRect(0, 0, 400, 240)
+			fadeAnimationIndex -= 0.09
+			if fadeAnimationIndex <= 0 then
+				fadeAnimationSection = 2
 			end
+		else
+			local sellBackground = gfx.image.new("assets/Backgrounds/frame1BASE")
+			aboveWaterBackgroundSprite = spr.new(sellBackground)
+			aboveWaterBackgroundSprite:moveTo(200, 120)
+			aboveWaterBackgroundSprite:add()
+			gfx.setDitherPattern(fadeAnimationIndex)
+			if fadeAnimationIndex < 0.75 then
+				abovewaterMusic:setVolume(fadeAnimationIndex)
+			else
+				abovewaterMusic:setVolume(0.75)
+			end
+			gfx.fillRect(0, 0, 400, 240)
+			fadeAnimationIndex += 0.09
+		end
 	elseif underWater == true then
 		if fadeAnimationSection == 1 then
-			-- when fadeAnimationSection is equal to 1 it goes through this 
+			-- when fadeAnimationSection is equal to 1 it goes through this
 			--untill the fadeAnimationIndex is less than 0 once it is
 			--it changes fadeAnimationSection equal to 2, which skips the first part and runs the else statement below
-			local sellBackround = gfx.image.new("assets/Backrounds/frame1BASE")
-			aboveWaterBackroundSprite = spr.new(sellBackround)
-			aboveWaterBackroundSprite:moveTo(200, 120)
-			aboveWaterBackroundSprite:add()
+			local sellBackground = gfx.image.new("assets/Backgrounds/frame1BASE")
+			aboveWaterBackgroundSprite = spr.new(sellBackground)
+			aboveWaterBackgroundSprite:moveTo(200, 120)
+			aboveWaterBackgroundSprite:add()
 			gfx.setDitherPattern(fadeAnimationIndex)
 			if fadeAnimationIndex < 0.75 then
 				abovewaterMusic:setVolume(fadeAnimationIndex)
@@ -483,8 +578,8 @@ function fadeAnimation()
 				fadeAnimationSection = 2
 			end
 		else
-			local underwaterBackround = gfx.image.new("assets/Backrounds/FishyFishyUnderwater")
-			underwaterBackgroundSprite = spr.new(underwaterBackround)
+			local underwaterBackground = gfx.image.new("assets/Backgrounds/FishyFishyUnderwater")
+			underwaterBackgroundSprite = spr.new(underwaterBackground)
 			underwaterBackgroundSprite:moveTo(200, 1200)
 			underwaterBackgroundSprite:add()
 			gfx.setDitherPattern(fadeAnimationIndex)
@@ -496,8 +591,8 @@ function fadeAnimation()
 	if fadeAnimationIndex > 1 then
 		windSound:stop()
 		fadeAnimationDone = true
-		aboveWaterBackroundSprite:remove()
-		aboveWaterBackroundSprite = nil
+		aboveWaterBackgroundSprite:remove()
+		aboveWaterBackgroundSprite = nil
 		underwaterBackgroundSprite:remove()
 		underwaterBackgroundSprite = nil
 		--gfx.sprite.removeAll()
@@ -509,10 +604,14 @@ function sellAnimation()
 	if sellAnimationDone == false then
 		local files = playdate.file.listFiles(soldFish.data.sellGifPath)
 		if files == nil then
-			print("An error occured while trying to fetch sell animation path. Check to make sure the path and files exist.")
+			print(
+				"An error occured while trying to fetch sell animation path. Check to make sure the path and files exist."
+			)
 		end
 		gfx.sprite.removeAll()
-		local sellAnimationFrame = gfx.image.new(soldFish.data.sellGifPath .. "/animation" .. string.upper(soldFish.data.name) .. sellAnimationIndex)
+		local sellAnimationFrame = gfx.image.new(
+			soldFish.data.sellGifPath .. "/animation" .. string.upper(soldFish.data.name) .. sellAnimationIndex
+		)
 		sellAnimationSprite = spr.new(sellAnimationFrame)
 		sellAnimationSprite:moveTo(200, 120)
 		sellAnimationSprite:add()
@@ -548,8 +647,8 @@ function sellAnimation()
 		sellAnimationIndex += 1
 	end
 	if balanceTextSprite then
-	balanceTextSprite:remove()
-	balanceTextSprite = nil
+		balanceTextSprite:remove()
+		balanceTextSprite = nil
 	end
 	balanceTextSprite = spr.spriteWithText("Balance: " .. "*" .. balance .. "*", 100, 20)
 	balanceTextSprite:setCenter(0, 0)
@@ -563,11 +662,13 @@ function sellFish()
 	coinSound:play()
 	local sellPrice = math.random(soldFish.data.priceMin, soldFish.data.priceMax)
 	balance += sellPrice
-
-	print('selling done')
+	print("selling done")
 end
 
 function setupGame()
+	--set font for game
+	local cuberikFont = gfx.font.new("assets/Fonts/Cuberick-Bold")
+	gfx.setFont(cuberikFont)
 
 	if aboveWater == true then
 		playdate.display.setRefreshRate(10)
@@ -579,7 +680,7 @@ function setupGame()
 	if underWater == true then
 		playdate.display.setRefreshRate(30)
 		-- Load images
-		local underWaterBackround = gfx.image.new("assets/Backrounds/FishyFishyUnderwater")
+		local underwaterBackground = gfx.image.new("assets/Backgrounds/FishyFishyUnderwater")
 		local fishingHook = gfx.image.new("assets/Misc/fishhook")
 
 		-- pause, load and play music/sounds
@@ -599,7 +700,7 @@ function setupGame()
 		fishingHookSprite.collisionResponse = spr.kCollisionTypeOverlap
 		fishingHookSprite:setGroups(1)
 		fishingHookSprite:setCollidesWithGroups(2)
-		underwaterBackgroundSprite = spr.new(underWaterBackround)
+		underwaterBackgroundSprite = spr.new(underwaterBackground)
 
 		-- Position sprites
 		fishingHookSprite:moveWithCollisions(200, 50)
@@ -619,6 +720,25 @@ end
 function buttonCheck()
 	if underWater then
 		if playdate.buttonJustPressed("A") then
+			if releaseFishPromptSprite then
+				local currentScale = 0.65
+				promptGrow = playdate.timer.keyRepeatTimerWithDelay(1, 1, function()
+					if promptGrow then
+						-- + 0.05 to make prompt sprite grow
+						releaseFishPromptSprite:setScale(currentScale - 0.05, currentScale - 0.05)
+						-- tracks the scale of the sprite easily
+						currentScale -= 0.05
+						--checks if the scale of the sprite has reached 0.65 and if so, stop growing the sprite
+						if currentScale <= 0 then
+							promptGrow:remove()
+							promptGrow = nil
+							releaseFishPromptSprite:remove()
+							releaseFishPromptSprite = nil
+							RFPromptCounter += 1
+						end
+					end
+				end)
+			end
 			fishHooked.speedX = fishHooked.speed
 			fishHooked:setRotation(0)
 			fishHooked:setCollideRect(0, 0, fishHooked:getSize())
@@ -630,6 +750,15 @@ function buttonCheck()
 		end
 	else
 		if playdate.buttonJustPressed("down") then
+			if castLinePromptSprite then
+				if promptGrow then
+					promptGrow:remove()
+					promptGrow = nil
+				end
+				castLinePromptSprite:remove()
+				castLinePromptSprite = nil
+				CLPromptCounter += 1
+			end
 			soldFish = nil
 			fishHooked = nil
 			fishPreviouslyHooked = nil
@@ -664,12 +793,33 @@ function playdate.update()
 			else
 				windSound:setVolume(0.75)
 			end
-
 		elseif coinAnimationDone == false then
 			sellAnimation()
 			gfx.sprite.update()
-			
 		else
+			if castLinePromptSprite == nil and CLPromptCounter < 3 then
+				local castLinePromptImg = gfx.image.new("assets/Prompts/castLinePrompt")
+				castLinePromptSprite = spr.new(castLinePromptImg)
+				castLinePromptSprite:setScale(0, 0)
+				castLinePromptSprite:add()
+				castLinePromptSprite:setCenter(0.5, 0.5)
+				castLinePromptSprite:moveTo(133, 220)
+
+				local currentScale = 0
+				promptGrow = playdate.timer.keyRepeatTimerWithDelay(1, 1, function()
+					if promptGrow then
+						-- + 0.05 to make prompt sprite grow
+						castLinePromptSprite:setScale(currentScale + 0.05, currentScale + 0.05)
+						-- tracks the scale of the sprite easily
+						currentScale += 0.05
+						--checks if the scale of the sprite has reached 0.8 and if so, stop growing the sprite
+						if currentScale >= 0.8 then
+							promptGrow:remove()
+							promptGrow = nil
+						end
+					end
+				end)
+			end
 			buttonCheck()
 			gfx.sprite.update()
 		end
@@ -702,19 +852,42 @@ function playdate.update()
 
 				--Check for collission with fishingHookSprite
 				if fishHooked then
+					if releaseFishPromptSprite == nil and RFPromptCounter < 3 then
+						local releaseFishPromptImg = gfx.image.new("assets/Prompts/releaseFishPrompt")
+						releaseFishPromptSprite = spr.new(releaseFishPromptImg)
+						releaseFishPromptSprite:add()
+						releaseFishPromptSprite:setCenter(0.5, 0.5)
+						releaseFishPromptSprite:setScale(0, 0)
+						releaseFishPromptSprite:moveTo(200, 40)
+
+						local currentScale = 0
+						promptGrow = playdate.timer.keyRepeatTimerWithDelay(1, 1, function()
+							if promptGrow then
+								-- + 0.05 to make prompt sprite grow
+								releaseFishPromptSprite:setScale(currentScale + 0.05, currentScale + 0.05)
+								-- tracks the scale of the sprite easily
+								currentScale += 0.05
+								--checks if the scale of the sprite has reached 0.65 and if so, stop growing the sprite
+								if currentScale >= 0.65 then
+									promptGrow:remove()
+									promptGrow = nil
+								end
+							end
+						end)
+					end
+
 					fishHooked:moveWithCollisions(fishingHookSprite.x, 187.5)
 					buttonCheck()
 				else
 					collissionCheck()
 				end
 
-				
 				-- scroll underwaterbackground with crank
 				local bgY1 = underwaterBackgroundSprite.y
 				underwaterBackgroundSprite:moveBy(0, -2 - reeling)
 				local bgY2 = underwaterBackgroundSprite.y - bgY1
 
-					--limits scrolling underwaterbackground too far and moves fish with underwaterbackground
+				--limits scrolling underwaterbackground too far and moves fish with underwaterbackground
 				if underwaterBackgroundSprite.y >= 1200 then
 					underwaterBackgroundSprite:moveTo(200, 1199)
 					for _, fish in pairs(spawnedFish) do
@@ -723,7 +896,7 @@ function playdate.update()
 						if fish.x > 350 then
 							fish.speedX = -fish.speedX
 							fish:setImageFlip(gfx.kImageUnflipped)
-								if fish == fishPreviouslyHooked then
+							if fish == fishPreviouslyHooked then
 								fishPreviouslyHooked = nil
 							end
 						elseif fish.x < 50 then
@@ -763,7 +936,7 @@ function playdate.update()
 						-- Fish swimming left and right with facing the correct direction
 						fish:moveBy(fish.speedX, 0)
 						if fish.x > 350 then
-						fish.speedX = -fish.speedX
+							fish.speedX = -fish.speedX
 							fish:setImageFlip(gfx.kImageUnflipped)
 							if fish == fishPreviouslyHooked then
 								fishPreviouslyHooked = nil
@@ -777,7 +950,7 @@ function playdate.update()
 						end
 					end
 				end
-				
+
 				-- checks for selling
 				if underwaterBackgroundSprite.y >= 1199 then
 					if fishHooked == nil then
